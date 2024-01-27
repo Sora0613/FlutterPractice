@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'Auth/LoginPage.dart';
 import 'screens/account.dart';
 import 'screens/share_info.dart';
 import 'screens/inventory_list.dart';
@@ -10,12 +11,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool isLoggedIn = true; // ダミーデータ。実際には認証状態を取得する必要があります。
+
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyStatefulWidget(),
+      home: isLoggedIn ? const MyStatefulWidget() : LoginPage(),
     );
   }
 }
