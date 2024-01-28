@@ -154,5 +154,6 @@ class EmailInvitationScreen extends StatelessWidget {
     // TODO: emailで招待する処理をここに記述
     // 例: メールを送信するライブラリを使用して、_emailController.text に入力されたメールアドレスに招待メールを送信する
     // 送信後に通知を表示するなどの処理も追加すると良い
+
   }
 }

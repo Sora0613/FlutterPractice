@@ -1,6 +1,12 @@
 import 'dart:convert';
+import 'dart:ffi';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_practice/src/api.dart';
+
+import '../auth_token.dart';
+import 'package:http/http.dart' as http;
+
 
 class ShoppingList extends StatefulWidget {
   const ShoppingList({Key? key}) : super(key: key);
@@ -18,19 +24,32 @@ class _ShoppingListState extends State<ShoppingList> {
     loadItemsFromJson();
   }
 
-  void loadItemsFromJson() {
+  Future<void> loadItemsFromJson() async {
     // ダミーデータをJSON形式で表現
-    const jsonString = '''
-      [
-        {"title": "アイテム1", "content": "メモ1"},
-        {"title": "アイテム2", "content": "メモ2"},
-        {"title": "アイテム3", "content": "メモ3"}
-      ]
-    ''';
+    const String apiUrl = 'http://localhost:8080/api/shoppinglist';
+    final token = await TokenService.getToken();
 
-    // JSONデータをList<ShoppingItem>に変換
-    final jsonData = json.decode(jsonString) as List;
-    shoppingItems = jsonData.map((item) => ShoppingItem.fromJson(item)).toList();
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // トークンをここに追加する
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as List;
+        setState(() {
+          shoppingItems = jsonData.map((item) => ShoppingItem.fromJson(item)).toList();
+        });
+      } else {
+        print('Failed to load data: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
   }
 
   @override
@@ -68,8 +87,13 @@ class _ShoppingListState extends State<ShoppingList> {
         trailing: IconButton(
           icon: const Icon(Icons.delete),
           onPressed: () {
-            // 削除ボタンの処理を追加
-            _removeItem(index);
+            //削除ボタンを押した時に削除APIを走らせる。
+            int id = shoppingItems[index].id;
+            TokenService.getToken().then((token) {
+              if (token != null) {
+                _removeItem(id, token);
+              }
+            });
           },
         ),
       ),
@@ -108,7 +132,7 @@ class _ShoppingListState extends State<ShoppingList> {
             TextButton(
               onPressed: () {
                 // 追加ボタンを押した時の処理
-                _addItem(titleController.text, contentController.text);
+                //_addItem(titleController.text, contentController.text);
                 Navigator.of(context).pop();
               },
               child: const Text('追加'),
@@ -119,17 +143,18 @@ class _ShoppingListState extends State<ShoppingList> {
     );
   }
 
-  void _addItem(String title, String content) {
-    setState(() {
-      shoppingItems.add(ShoppingItem(title: title, content: content));
+  void _removeItem(int id, String token) {
+    ApiService().deleteItem(id, token).then((_) {
+      // API呼び出しが成功したらリストからアイテムを削除してUIを更新
+      setState(() {
+        shoppingItems.removeWhere((item) => item.id == id);
+      });
+    }).catchError((error) {
+      // エラーハンドリング
+      print('Error occurred while deleting item: $error');
     });
   }
 
-  void _removeItem(int index) {
-    setState(() {
-      shoppingItems.removeAt(index);
-    });
-  }
 
   void _navigateToDetailScreen(BuildContext context, ShoppingItem item) {
     Navigator.push(
@@ -144,16 +169,19 @@ class _ShoppingListState extends State<ShoppingList> {
 class ShoppingItem {
   final String title;
   final String content;
+  final int id;
 
   ShoppingItem({
     required this.title,
     required this.content,
+    required this.id,
   });
 
   factory ShoppingItem.fromJson(Map<String, dynamic> json) {
     return ShoppingItem(
       title: json['title'] as String,
       content: json['content'] as String,
+      id: json['id'] as int,
     );
   }
 }

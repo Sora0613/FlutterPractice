@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 
 import 'package:flutter/material.dart';
 
+import '../auth_token.dart';
+
 class InventoryList extends StatefulWidget {
   const InventoryList({Key? key}) : super(key: key);
 
@@ -21,9 +23,17 @@ class _InventoryListState extends State<InventoryList> {
 
   Future<void> loadItemsFromJson() async {
     const String apiUrl = 'http://localhost:8080/api/inventory';
+    final token = await TokenService.getToken();
 
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // トークンをここに追加する
+        },
+      );
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body) as List;
