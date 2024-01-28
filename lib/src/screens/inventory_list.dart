@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 import 'package:flutter/material.dart';
 
@@ -10,7 +11,7 @@ class InventoryList extends StatefulWidget {
 }
 
 class _InventoryListState extends State<InventoryList> {
-  List<Item> items = []; // アイテムのリスト
+  List<Item> items = []; // 在庫アイテムのリスト
 
   @override
   void initState() {
@@ -18,21 +19,23 @@ class _InventoryListState extends State<InventoryList> {
     loadItemsFromJson();
   }
 
-  void loadItemsFromJson() {
-    // ダミーデータ
-    const jsonString = '''
-      [
-        {"name": "商品1", "price": 1000, "quantity": 10, "jan": "123456789", "additionalInfo": "追加情報1"},
-        {"name": "商品2", "price": 1500, "quantity": 5, "jan": "987654321", "additionalInfo": "追加情報2"},
-        {"name": "商品3", "price": 2000, "quantity": 8, "jan": "456789123", "additionalInfo": "追加情報3"},
-        {"name": "商品4", "price": 3000, "quantity": 3, "jan": "321654987", "additionalInfo": "追加情報4"},
-        {"name": "商品5", "price": 5000, "quantity": 1, "jan": "789123456", "additionalInfo": "追加情報5"}
-      ]
-    ''';
+  Future<void> loadItemsFromJson() async {
+    const String apiUrl = 'http://localhost:8080/api/inventory';
 
-    // JSONデータをList<Item>に変換
-    final jsonData = json.decode(jsonString) as List;
-    items = jsonData.map((item) => Item.fromJson(item)).toList();
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as List;
+        setState(() {
+          items = jsonData.map((item) => Item.fromJson(item)).toList();
+        });
+      } else {
+        print('Failed to load data: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
   }
 
   @override
@@ -83,8 +86,8 @@ class _InventoryListState extends State<InventoryList> {
           children: [
             Text('価格: ${items[index].price}'),
             Text('数量: ${items[index].quantity}'),
-            Text('JAN: ${items[index].jan}'),
-            Text('追加ユーザ項目: ${items[index].additionalInfo}'),
+            Text('JAN: ${items[index].JAN}'),
+            Text('追加ユーザ項目: ${items[index].user_name}'),
           ],
         ),
         trailing: Row(
@@ -125,15 +128,15 @@ class Item {
   final String name;
   final int price;
   final int quantity;
-  final String jan;
-  final String additionalInfo;
+  final int JAN;
+  final String user_name;
 
   Item({
     required this.name,
     required this.price,
     required this.quantity,
-    required this.jan,
-    required this.additionalInfo,
+    required this.JAN,
+    required this.user_name,
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
@@ -141,8 +144,8 @@ class Item {
       name: json['name'] as String,
       price: json['price'] as int,
       quantity: json['quantity'] as int,
-      jan: json['jan'] as String,
-      additionalInfo: json['additionalInfo'] as String,
+      JAN: json['JAN'] as int,
+      user_name: json['user_name'] as String,
     );
   }
 }
