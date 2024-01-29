@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_practice/src/api.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter/material.dart';
@@ -106,25 +107,42 @@ class _InventoryListState extends State<InventoryList> {
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () {
-                // 数量増加ボタンの処理を追加
+                // get item id and token
+                int id = items[index].id;
+                TokenService.getToken().then((token) {
+                  if (token != null) {
+                    _addQuantity(id, token);
+                  }
+                });
               },
             ),
             IconButton(
               icon: const Icon(Icons.remove),
               onPressed: () {
-                // 数量減少ボタンの処理を追加
+                int id = items[index].id;
+                TokenService.getToken().then((token) {
+                  if (token != null) {
+                    _reduceQuantity(id, token);
+                  }
+                });
               },
             ),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () {
                 // 編集ボタンの処理を追加
+                //画面遷移（遷移後に現在のリストの値を取得してそれをテキストボックスにすでに入力された状態にしたい）
               },
             ),
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: () {
-                // 削除ボタンの処理を追加
+                int id = items[index].id;
+                TokenService.getToken().then((token) {
+                  if (token != null) {
+                    _showDeleteConfirmationDialog(id, token);
+                  }
+                });
               },
             ),
           ],
@@ -132,9 +150,70 @@ class _InventoryListState extends State<InventoryList> {
       ),
     );
   }
+
+  void _addQuantity(int id, String token) {
+    ApiService().addQuantity(id, token).then((_) {
+      // API呼び出しが成功したらリストからアイテムを削除してUIを更新
+      setState(() {
+        loadItemsFromJson();
+      });
+    }).catchError((error) {
+      // エラーハンドリング
+      print('Error occurred while adding item: $error');
+    });
+  }
+
+  void _reduceQuantity(int id, String token) {
+    ApiService().reduceQuantity(id, token).then((_) {
+      setState(() {
+        loadItemsFromJson();
+      });
+    }).catchError((error) {
+      print('Error occurred while reducing item: $error');
+    });
+  }
+
+  void _deleteInventoryItem(int id, String token) {
+    ApiService().deleteInventoryItem(id, token).then((_) {
+      setState(() {
+        // remove item from the list
+        items.removeWhere((item) => item.id == id);
+      });
+    }).catchError((error) {
+      print('Error occurred while deleting item: $error');
+    });
+  }
+
+  void _showDeleteConfirmationDialog(int id, String token) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('削除の確認'),
+          content: Text('本当に削除しますか？'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('キャンセル'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteInventoryItem(id, token);
+              },
+              child: Text('削除'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class Item {
+  final int id;
   final String name;
   final int price;
   final int quantity;
@@ -142,6 +221,7 @@ class Item {
   final String user_name;
 
   Item({
+    required this.id,
     required this.name,
     required this.price,
     required this.quantity,
@@ -151,6 +231,7 @@ class Item {
 
   factory Item.fromJson(Map<String, dynamic> json) {
     return Item(
+      id: json['id'] as int,
       name: json['name'] as String,
       price: json['price'] as int,
       quantity: json['quantity'] as int,

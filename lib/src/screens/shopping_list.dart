@@ -132,7 +132,11 @@ class _ShoppingListState extends State<ShoppingList> {
             TextButton(
               onPressed: () {
                 // 追加ボタンを押した時の処理
-                //_addItem(titleController.text, contentController.text);
+                TokenService.getToken().then((token) {
+                  if (token != null) {
+                    _addItem(titleController.text, contentController.text, token);
+                  }
+                });
                 Navigator.of(context).pop();
               },
               child: const Text('追加'),
@@ -163,6 +167,18 @@ class _ShoppingListState extends State<ShoppingList> {
         builder: (context) => DetailScreen(item: item),
       ),
     );
+  }
+
+  void _addItem(String text, String text2, token) {
+    ApiService().addItem(text, text2, token).then((_) {
+      setState(() {
+        // add item to the list.
+        loadItemsFromJson();
+      });
+    }).catchError((error) {
+      // エラーハンドリング
+      print('Error occurred while adding item: $error');
+    });
   }
 }
 

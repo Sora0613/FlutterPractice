@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_practice/src/api.dart';
+import 'package:http/http.dart' as http;
+
+import '../auth_token.dart';
 
 class ShareInfo extends StatefulWidget {
   const ShareInfo({Key? key}) : super(key: key);
@@ -9,7 +13,41 @@ class ShareInfo extends StatefulWidget {
 }
 
 class _ShareInfoState extends State<ShareInfo> {
-  List<String> names = ['John Doe', 'Jane Doe', 'Alice', 'Bob']; // ダミーデータ
+  List<Collaborator> collaborators = []; // 共有者のリスト
+
+  @override
+  void initState() {
+    super.initState();
+    loadCollaboratorsFromApi();
+  }
+
+  Future<void> loadCollaboratorsFromApi() async {
+    const apiUrl = 'http://localhost:8080/api/collaborator';
+    final token = await TokenService.getToken();
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // トークンをここに追加する
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as List;
+        setState(() {
+          collaborators =
+              jsonData.map((item) => Collaborator.fromJson(item)).toList();
+        });
+      } else {
+        print('Failed to load data: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,143 +55,99 @@ class _ShareInfoState extends State<ShareInfo> {
       appBar: AppBar(
         title: const Text('共有管理'),
       ),
-      body: _buildList(),
+      body: ListView.builder(
+        itemCount: collaborators.length,
+        itemBuilder: (context, index) {
+          return _buildListItem(index);
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          _showInviteOptions();
+          // ダイアログを表示して新しい共有者を追加
+          _showAddCollaboratorDialog();
         },
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildList() {
-    return ListView.builder(
-      itemCount: names.length,
-      itemBuilder: (context, index) {
-        return _buildListItem(index);
-      },
-    );
-  }
-
   Widget _buildListItem(int index) {
+    final collaborator = collaborators[index];
     return Card(
       margin: const EdgeInsets.all(8.0),
       child: ListTile(
-        title: Text(names[index]),
+        title: Text(collaborator.name),
         trailing: IconButton(
           icon: const Icon(Icons.delete),
           onPressed: () {
-            _removeItem(index);
+            _showDeleteConfirmationDialog(collaborator.id, collaborator.name);
           },
         ),
       ),
     );
   }
 
-  void _removeItem(int index) {
-    setState(() {
-      names.removeAt(index);
+  void _showAddCollaboratorDialog() {
+    // 新しい共有者を追加するためのダイアログを表示する処理をここに追加
+  }
+
+  void _removeCollaborator(int id, String token) {
+    ApiService().deleteCollaborator(id, token).then((_) {
+      setState(() {
+        loadCollaboratorsFromApi();
+        collaborators.removeWhere((element) => element.id == id);
+      });
     });
   }
 
-  void _showInviteOptions() {
-    showModalBottomSheet(
+  void _showDeleteConfirmationDialog(int id, String name) {
+    showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.link),
-              title: const Text('リンクを生成する'),
-              onTap: () {
-                // リンクを生成する処理
-                _generateLink();
-                Navigator.pop(context); // モーダルを閉じる
+        return AlertDialog(
+          title: const Text('削除の確認'),
+          content: Text('「$name」を削除しますか？'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
               },
+              child: const Text('キャンセル'),
             ),
-            ListTile(
-              leading: const Icon(Icons.email),
-              title: const Text('emailで招待する'),
-              onTap: () {
-                // 画面遷移してemail招待画面へ
-                Navigator.pop(context); // モーダルを閉じる
-                _navigateToEmailInvitationScreen();
+            TextButton(
+              onPressed: () {
+                TokenService.getToken().then((token) {
+                  if (token != null) {
+                    _removeCollaborator(id, token);
+                  }
+                });
+                Navigator.of(context).pop();
               },
+              child: const Text('削除'),
             ),
           ],
         );
       },
     );
   }
-
-  void _generateLink() {
-    // 適当なURLを生成しクリップボードにコピー
-    const link = 'https://example.com/invitation';
-    Clipboard.setData(ClipboardData(text: link));
-
-    // 通知を表示
-    _showNotification('コピーしました: $link');
-  }
-
-  void _showNotification(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      duration: const Duration(seconds: 2),
-    ));
-  }
-
-  void _navigateToEmailInvitationScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EmailInvitationScreen(),
-      ),
-    );
-  }
 }
 
-class EmailInvitationScreen extends StatelessWidget {
-  final TextEditingController _emailController = TextEditingController();
+class Collaborator {
+  final int id;
+  final String name;
+  final String email;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('emailで招待'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 300.0, // テキストボックスの幅を設定
-              child: TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Emailアドレス'),
-              ),
-            ),
-            const SizedBox(height: 16.0),
-            ElevatedButton(
-              onPressed: () {
-                // 招待ボタンを押した時の処理
-                _sendEmailInvitation();
-                Navigator.pop(context);
-              },
-              child: const Text('招待'),
-            ),
-          ],
-        ),
-      ),
+  Collaborator({
+    required this.id,
+    required this.name,
+    required this.email,
+  });
+
+  factory Collaborator.fromJson(Map<String, dynamic> json) {
+    return Collaborator(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      email: json['email'] as String,
     );
-  }
-
-  void _sendEmailInvitation() {
-    // TODO: emailで招待する処理をここに記述
-    // 例: メールを送信するライブラリを使用して、_emailController.text に入力されたメールアドレスに招待メールを送信する
-    // 送信後に通知を表示するなどの処理も追加すると良い
-
   }
 }
