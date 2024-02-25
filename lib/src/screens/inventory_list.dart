@@ -95,7 +95,8 @@ class _InventoryListState extends State<InventoryList> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('価格: ${items[index].price}'),
+            // 価格がnullの場合は「未設定」と表示する
+            Text('価格: ${items[index].price ?? '未設定'}'),
             Text('数量: ${items[index].quantity}'),
             Text('JAN: ${items[index].JAN}'),
             Text('追加ユーザ項目: ${items[index].user_name}'),
@@ -215,7 +216,7 @@ class _InventoryListState extends State<InventoryList> {
 class Item {
   final int id;
   final String name;
-  final int price;
+  final int? price; // Nullable int
   final int quantity;
   final int JAN;
   final String user_name;
@@ -233,10 +234,11 @@ class Item {
     return Item(
       id: json['id'] as int,
       name: json['name'] as String,
-      price: json['price'] as int,
+      price: json['price'] as int?, // Nullable int
       quantity: json['quantity'] as int,
       JAN: json['JAN'] as int,
       user_name: json['user_name'] as String,
     );
   }
 }
+
