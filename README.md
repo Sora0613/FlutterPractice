@@ -1,16 +1,5 @@
-# flutter_practice
-
-my first flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# ToDo
+- [ ] 在庫一覧の在庫登録機能を作成する
+- [ ] 在庫一覧のJAN登録を作成する
+- [ ] JAN登録時、スマホカメラを使用してバーコードを読み取るようにする。
+- [ ] account欄からLINE連帯の機能を触れるようにする。
